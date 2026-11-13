@@ -1,31 +1,26 @@
-# ADR-0001: <modelo y proveedor de IA que usa el proyecto, en una frase>
+# ADR-0001: Uso de modelos LLM vía API backend para extracción estructurada de datos
 
-- Estado: Propuesto
-- Fecha: <AAAA-MM-DD>
-- Decide: <nombre y rol de quien responde por esta decisión>
-
-<!--
-Si su proyecto NO usa IA dentro del producto, este ADR pasa a ser:
-«Qué herramientas de IA usamos para programar y con qué reglas».
--->
+- Estado: Aceptado
+- Fecha: 2026-11-13
+- Decide: Equipo de Arquitectura y Cumplimiento Normativo
 
 ## Contexto
 
-<Qué necesita hacer la IA en su producto. Qué restricciones hay: costo, datos personales, latencia, idioma, si el cliente u organización aliada puso condiciones. Máximo 5 líneas.>
+El sistema requiere extraer y normalizar datos desde currículums y perfiles a esquemas estructurados JSON en español. Las restricciones principales son: costo predecible, baja latencia, confidencialidad estricta y garantía de que los datos de postulantes no se usen para entrenar modelos fundacionales.
 
 ## Decisión
 
-<Qué modelo y qué proveedor, para qué tareas, y cómo se llama (solo desde el servidor, con qué llave). Frases verificables. Mal: «se usará IA de forma responsable». Bien: «el modelo X se llama solo desde `src/lib/ai/`, con la llave en una variable de entorno del servidor».>
+El modelo seleccionado se consume exclusivamente mediante API desde el backend del servidor (`src/lib/ai/client.ts`), autenticado con variables de entorno (`AI_API_KEY`). Ninguna clave ni llamada a la API de IA existe en el cliente web. Se utiliza un acuerdo comercial de no retención de datos (*zero data retention*) con el proveedor.
 
 ## Alternativas descartadas
 
-- <Otro modelo o proveedor>: <por qué no>.
-- <Otra opción, por ejemplo no usar IA para esta tarea>: <por qué no>.
+- Modelos locales autohospedados (ej. Llama 3 on-premise): descartado por el alto coste y complejidad de infraestructura de GPUs dedicadas en etapa inicial.
+- Consultas directas desde el frontend: descartado por riesgo inaceptable de exposición de credenciales y manipulación de prompts.
 
 ## Consecuencias
 
-<Qué se gana y qué se pierde. Costo estimado por mes. Qué pasa si el proveedor falla o sube el precio. Qué queda pendiente.>
+Se obtiene alta precisión de extracción semántica en español con coste proporcional al uso. Como contrapartida, existe dependencia de la disponibilidad de la API del proveedor, mitigada mediante límites de tasa (*rate limiting*), reintentos con backoff exponencial y timeouts estrictos de 10 segundos.
 
 ## Cómo se verifica
 
-<Dónde en el código o en las pruebas se ve que esto se cumple: un archivo, un test, una regla de CI.>
+Verificable en `tests/ai/client.test.ts`, donde se comprueba que el cliente valida variables de entorno del servidor y en las reglas de linter/CI que impiden referencias a librerías de IA en el código cliente.
